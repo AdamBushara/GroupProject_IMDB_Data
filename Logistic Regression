@@ -1,0 +1,82 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Sat Nov 19 16:06:30 2022
+
+@author: adbu6985
+"""
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import sklearn.linear_model as sk_1m
+import sklearn.model_selection as skl_ms
+import sklearn.linear_model as skl_lm
+
+
+train = pd.read_csv("train.csv")
+
+print(train.head())
+train.describe()
+
+years = [x for x  in train["Year"]]
+
+years = sorted(set(years))
+
+number_words_female = [0 for x in range(len(years))]
+number_words_male = [0 for x in range(len(years))]
+number_of_films = [0 for x in range(len(years))]
+
+
+    # Logistic Regression
+    
+    
+from sklearn.preprocessing import StandardScaler
+scale_x = StandardScaler()
+model = skl_lm.LogisticRegression(solver = 'lbfgs', max_iter = 3000)
+X = train[['Number words female', 'Number of words lead', 'Number of male actors', 'Number of female actors']]
+Y = train ['Lead']
+X_train, X_val, Y_train, Y_val =skl_ms.train_test_split(X,Y, test_size = 0.3)
+X_train = scale_x.fit_transform(X_train)
+X_val = scale_x.transform(X_val)
+n_fold = 10
+model.fit(X_train, Y_train)
+predict_prob = model.predict_proba(X_val)
+print(model.classes_)
+print(predict_prob[0:5])
+    
+    
+prediction = np.empty(len(X_val), dtype = object)
+prediction = np.where(predict_prob[:,0] >= 0.5, 'Female', 'Male')
+print(prediction[0:5])
+print('Confusion Matrix:')
+print(pd.crosstab(prediction, Y_val), '\n')
+    
+    
+from sklearn.metrics import accuracy_score
+print("Accuracy_:_", accuracy_score(Y_val, prediction))
+    
+    
+models = []
+models.append(skl_lm.LogisticRegression(solver = 'lbfgs', max_iter = 3000))
+misclassification = np.zeros((n_fold, len(models)))
+cv = skl_ms.KFold(n_splits=n_fold, random_state=10, shuffle=True)
+    
+    
+    
+for i, (train_index,val_index) in enumerate(cv.split(X)):
+        X_train, X_val = X.iloc[train_index], X.iloc[val_index]
+        Y_train, Y_val = Y.iloc[train_index], Y.iloc[val_index]
+        
+        for m in range(np.shape(models)[0]):
+            model = models[m]
+            model.fit(X_train, Y_train)
+            prediction = model.predict(X_val)
+            misclassification[i,m] = np.mean(prediction != Y_val)
+            
+            
+            plt.boxplot(misclassification)
+            plt.title('Cross validation error for the Logistic Regression method')
+            plt.ylabel('Validation error')
+            plt.xlabel('Logistic Regression')
+            plt.show()
+            
